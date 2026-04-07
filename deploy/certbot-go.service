@@ -1,0 +1,27 @@
+[Unit]
+Description=certbot-go ACME certificate manager
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/certbot-go --config /etc/certbot-go/config.yaml
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/etc/letsencrypt
+
+# Environment variables for Alibaba Cloud credentials
+# Option 1: inline (not recommended for production)
+# Environment=ALICLOUD_ACCESS_KEY=your-ak
+# Environment=ALICLOUD_SECRET_KEY=your-sk
+
+# Option 2: environment file (recommended)
+EnvironmentFile=-/etc/certbot-go/.env
+
+[Install]
+WantedBy=multi-user.target

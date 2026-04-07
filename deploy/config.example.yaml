@@ -1,0 +1,81 @@
+# certbot-go configuration file
+# ==================
+
+# Let's Encrypt account email, used for certificate expiry notifications
+email:
+
+# ACME directory URL
+# Production: https://acme-v02.api.letsencrypt.org/directory
+# Staging:    https://acme-staging-v02.api.letsencrypt.org/directory
+# ⚠️ It is recommended to use staging for initial testing to avoid hitting Let's Encrypt rate limits
+acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
+
+# Certificate storage directory; a subdirectory will be created for each certificate
+# Each subdirectory contains: fullchain.pem, privkey.pem, chain.pem, metadata.json
+cert_dir: /etc/letsencrypt/live
+
+# ACME account data storage directory
+account_dir: /etc/letsencrypt/accounts
+
+# Renewal check interval (only applies in daemon mode)
+# Let's Encrypt certificates expire after 90 days; certbot-go will only renew
+# a certificate once it falls within the renew_before window
+check_interval: 12h
+
+# How far in advance to begin renewing a certificate before it expires
+renew_before: 720h  # 30 days
+
+# Alibaba Cloud DNS API credentials
+# Used to automatically create/delete ACME challenge TXT records via Alibaba Cloud DNS
+# It is recommended to use a RAM subaccount with minimal permissions: AliyunDNSFullAccess
+# Environment variable references are supported: $ALICLOUD_ACCESS_KEY, $ALICLOUD_SECRET_KEY
+alidns:
+  access_key_id: "$ALICLOUD_ACCESS_KEY"
+  access_key_secret: "$ALICLOUD_SECRET_KEY"
+  # region_id: cn-hangzhou  # The AliDNS API is region-agnostic; this field is reserved for future use
+
+# Certificate list
+# ==========
+#
+# Two modes are supported:
+#
+# Mode 1 — CNAME delegation (for DNS providers without API support, e.g. China Telecom Cloud):
+#   Set challenge_delegate; the program will manage TXT records on the delegated domain via Alibaba Cloud DNS.
+#   A one-time manual CNAME entry is required in your primary DNS provider:
+#     _acme-challenge.example.com CNAME _acme-challenge.example.proxy-acme.com
+#
+# Mode 2 — Direct mode (for domains already hosted on Alibaba Cloud DNS):
+#   Omit challenge_delegate; the program will directly manage _acme-challenge TXT records via Alibaba Cloud DNS.
+#
+certificates:
+  # Example 1: CNAME delegation mode — wildcard certificate + apex domain
+  # Manually add the following record in your primary DNS provider:
+  #   _acme-challenge.example.com  CNAME  _acme-challenge.example.proxy-acme.com
+  - name: example.com
+    domains:
+      - "example.com"
+      - "*.example.com"
+    challenge_delegate: "example.proxy-acme.com"
+
+  # Example 2: Direct mode — domain is hosted on Alibaba Cloud DNS, no delegation needed
+  # No manual setup required; the program calls the API directly to complete validation
+  # - name: ali-hosted.com
+  #   domains:
+  #     - "ali-hosted.com"
+  #     - "*.ali-hosted.com"
+  #   # Note: omitting challenge_delegate enables direct mode
+
+  # Example 3: Direct mode — multiple individual subdomain certificates
+  # - name: api-certs
+  #   domains:
+  #     - "api.ali-hosted.com"
+  #     - "admin.ali-hosted.com"
+
+  # Example 4: CNAME delegation mode — another apex domain
+  # Manually add the following record in your primary DNS provider:
+  #   _acme-challenge.another-domain.com  CNAME  _acme-challenge.another-domain.proxy-acme.com
+  # - name: another-domain.com
+  #   domains:
+  #     - "another-domain.com"
+  #     - "*.another-domain.com"
+  #   challenge_delegate: "another-domain.proxy-acme.com"

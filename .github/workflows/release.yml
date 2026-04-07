@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "${{ github.workflow }} - ${{ github.head_ref || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check tag is on main
+        run: |
+          TAG_COMMIT=$(git rev-list -n 1 ${{ github.ref_name }})
+          if ! git rev-list origin/main | grep -q "$TAG_COMMIT"; then
+            echo "❌ Tag is not from main branch"
+            exit 1
+          fi
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - run: make test
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { goos: darwin, goarch: arm64 }
+          - { goos: darwin, goarch: amd64 }
+          - { goos: linux, goarch: amd64 }
+          - { goos: linux, goarch: arm64 }
+          - { goos: windows, goarch: amd64 }
+          - { goos: windows, goarch: arm64 }
+    env:
+      CGO_ENABLED: "0"
+      VERSION: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - run: GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} make workflow-build
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: build-${{ matrix.goos }}_${{ matrix.goarch }}
+          path: build/certbot-go-*
+
+  update:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Fetch Update logs
+        id: fetch_update_logs
+        run: bash ./scripts/extract_update_logs.sh
+        shell: bash
+
+      - name: Set Environment
+        run: echo "BUILD_TIME=$(TZ=Asia/Shanghai date)" >> $GITHUB_ENV
+
+      - run: |
+          if [ -z "${UPDATE_LOGS}" ]; then
+            echo "No update logs found, using default message."
+            UPDATE_LOGS="More new features are now supported. Check for detailed changelog soon."
+          else
+            echo "Using found update logs."
+          fi
+          
+          cat > release.txt << EOF
+          ${UPDATE_LOGS}
+          
+          Created at ${{ env.BUILD_TIME }}.
+          EOF
+
+      - uses: actions/download-artifact@v7
+        with:
+          path: build
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          draft: false
+          body_path: release.txt
+          files: build/certbot-go-*
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
+
+      - uses: geekyeggo/delete-artifact@v5
+        with:
+          name: build-*
