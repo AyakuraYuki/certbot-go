@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/lego"
@@ -67,7 +66,7 @@ func (m *Manager) loadOrCreateUser() error {
 	if data, err := os.ReadFile(accountFile); err == nil {
 		// Load existing account
 		user := &User{}
-		if err := json.Unmarshal(data, user); err != nil {
+		if err = json.Unmarshal(data, user); err != nil {
 			return fmt.Errorf("parse account: %w", err)
 		}
 
@@ -76,11 +75,12 @@ func (m *Manager) loadOrCreateUser() error {
 		if block == nil {
 			return fmt.Errorf("failed to decode account key PEM")
 		}
-		key, err := x509.ParseECPrivateKey(block.Bytes)
+
+		user.key, err = x509.ParseECPrivateKey(block.Bytes)
 		if err != nil {
 			return fmt.Errorf("parse account key: %w", err)
 		}
-		user.key = key
+
 		m.user = user
 		log.Info().Str("email", user.Email).Msg("[acme] Loaded existing account")
 		return nil
@@ -112,14 +112,13 @@ func (m *Manager) loadOrCreateUser() error {
 func (m *Manager) setupClient() error {
 	legoCfg := lego.NewConfig(m.user)
 	legoCfg.CADirURL = m.cfg.ACMEDirectory
-	legoCfg.Certificate.KeyType = certcrypto.RSA2048
 
 	client, err := lego.NewClient(legoCfg)
 	if err != nil {
 		return fmt.Errorf("create lego client: %w", err)
 	}
 
-	if err := client.Challenge.SetDNS01Provider(m.provider); err != nil {
+	if err = client.Challenge.SetDNS01Provider(m.provider); err != nil {
 		return fmt.Errorf("set DNS provider: %w", err)
 	}
 

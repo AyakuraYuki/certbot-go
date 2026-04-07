@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	goacmeLog "github.com/go-acme/lego/v4/log"
 	"github.com/rs/zerolog"
 )
 
@@ -23,6 +24,9 @@ func init() {
 	}
 
 	logger = zerolog.New(output).With().Timestamp().Logger()
+
+	wrapper := &loggerWrapper{logger: logger}
+	goacmeLog.Logger = wrapper
 }
 
 func Debug() *zerolog.Event { return logger.Debug() }
@@ -32,3 +36,55 @@ func Error() *zerolog.Event { return logger.Error() }
 func Fatal() *zerolog.Event { return logger.Fatal() }
 func Panic() *zerolog.Event { return logger.Panic() }
 func Trace() *zerolog.Event { return logger.Trace() }
+
+var _ goacmeLog.StdLogger = (*loggerWrapper)(nil)
+
+type loggerWrapper struct {
+	logger zerolog.Logger
+}
+
+func (l *loggerWrapper) Fatal(args ...any) {
+	e := l.logger.Fatal()
+	for i, argv := range args {
+		e = e.Any(fmt.Sprintf("arg%d", i), argv)
+	}
+	e.Send()
+
+	os.Exit(1)
+}
+
+func (l *loggerWrapper) Fatalln(args ...any) {
+	e := l.logger.Fatal()
+	for i, argv := range args {
+		e = e.Any(fmt.Sprintf("arg%d", i), argv)
+	}
+	e.Msg("\n")
+
+	os.Exit(1)
+}
+
+func (l *loggerWrapper) Fatalf(format string, args ...any) {
+	l.logger.Fatal().Msgf(format, args...)
+
+	os.Exit(1)
+}
+
+func (l *loggerWrapper) Print(args ...any) {
+	e := l.logger.Info()
+	for i, argv := range args {
+		e = e.Any(fmt.Sprintf("arg%d", i), argv)
+	}
+	e.Send()
+}
+
+func (l *loggerWrapper) Println(args ...any) {
+	e := l.logger.Info()
+	for i, argv := range args {
+		e = e.Any(fmt.Sprintf("arg%d", i), argv)
+	}
+	e.Msg("\n")
+}
+
+func (l *loggerWrapper) Printf(format string, args ...any) {
+	l.logger.Info().Msgf(format, args...)
+}

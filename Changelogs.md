@@ -1,11 +1,15 @@
+## v1.1.0
+
+- 替换了 lego 默认的日志，统一日志格式
+
 ## v1.0.0
 
 <details>
-<summary><strong>🎉 First version</strong></summary>
+<summary><strong>🎉 第一个版本</strong></summary>
 
-- The first release version.
-- Manage multiple domains.
-- Support Direct mode and Delegation mode.
-- Run in once, or start as daemon service.
+- 这是第一个发布版本
+- 允许管理多个域名
+- 支持直接验证和 CNAME 委托验证
+- 允许仅运行一次，或作为守护进程/服务运行
 
 </details>

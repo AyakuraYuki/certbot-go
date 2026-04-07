@@ -1,11 +1,3 @@
-## v1.0.0
+## v1.1.0
 
-<details>
-<summary><strong>🎉 First version</strong></summary>
-
-- The first release version.
-- Manage multiple domains.
-- Support Direct mode and Delegation mode.
-- Run in once, or start as daemon service.
-
-</details>
+- 替换了 lego 默认的日志，统一日志格式
