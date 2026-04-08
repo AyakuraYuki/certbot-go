@@ -11,10 +11,6 @@ var (
 	version = "dev"
 )
 
-func init() {
-
-}
-
 func main() {
 	// Setup signal handler for dumping goroutine stack traces
 	signal.SetupStackDumpSignal()
