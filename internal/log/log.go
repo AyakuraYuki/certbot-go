@@ -3,24 +3,30 @@ package log
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	goacmeLog "github.com/go-acme/lego/v4/log"
 	"github.com/rs/zerolog"
 )
 
-var logger zerolog.Logger
+var (
+	logger  zerolog.Logger
+	noColor bool
+)
 
 func init() {
+	noColor = !isColorSupported()
+
 	locShanghai, _ := time.LoadLocation("Asia/Shanghai")
 
 	output := zerolog.ConsoleWriter{
 		Out:             os.Stderr,
 		TimeFormat:      time.DateTime,
 		TimeLocation:    locShanghai,
-		FormatLevel:     func(i any) string { return strings.ToUpper(fmt.Sprintf("| %-6s |", i)) },
-		FormatFieldName: func(i any) string { return fmt.Sprintf("%s:", i) },
+		NoColor:         noColor,
+		FormatMessage:   formatMessage,
+		FormatLevel:     formatLevel,
+		FormatFieldName: formatFieldName,
 	}
 
 	logger = zerolog.New(output).With().Timestamp().Logger()

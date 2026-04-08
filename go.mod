@@ -6,9 +6,11 @@ require (
 	github.com/alibabacloud-go/alidns-20150109/v5 v5.3.3
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 	github.com/aliyun/credentials-go v1.4.12
+	github.com/fatih/color v1.19.0
 	github.com/go-acme/lego/v4 v4.33.0
 	github.com/rs/zerolog v1.35.0
 	github.com/spf13/cobra v1.10.2
+	golang.org/x/term v0.40.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -19,7 +21,6 @@ require (
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
-	github.com/fatih/color v1.19.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/json-iterator/go v1.1.13-0.20220915233716-71ac16282d12 // indirect
