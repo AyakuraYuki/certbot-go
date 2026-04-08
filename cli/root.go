@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 
+	"github.com/AyakuraYuki/certbot-go/internal/log"
 	"github.com/AyakuraYuki/certbot-go/internal/start"
 )
 
@@ -56,20 +58,20 @@ func init() {
 func SetVersion(version string) {
 	rootCmd.Version = version
 
-	if goVersion != "" {
-		modifiedText := color.HiGreenString("Clean")
-		if modified {
-			modifiedText = color.HiRedString("Dirty")
-		}
+	var modifiedText string
+	if log.NoColor() {
+		modifiedText = lo.Ternary(modified, "Dirty", "Clean")
+	} else {
+		modifiedText = lo.Ternary(modified, color.HiRedString("Dirty"), color.HiGreenString("Clean"))
+	}
 
-		rootCmd.Version = fmt.Sprintf(`%s
+	rootCmd.Version = fmt.Sprintf(`%s
 
  Go version: %s
    Revision: %s
    Built at: %s
 Dirty build: %s`,
-			version, strings.TrimPrefix(goVersion, "go"), revision, builtTime, modifiedText)
-	}
+		version, strings.TrimPrefix(goVersion, "go"), revision, builtTime, modifiedText)
 }
 
 // Execute the CLI

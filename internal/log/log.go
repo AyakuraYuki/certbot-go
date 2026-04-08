@@ -43,6 +43,8 @@ func Fatal() *zerolog.Event { return logger.Fatal() }
 func Panic() *zerolog.Event { return logger.Panic() }
 func Trace() *zerolog.Event { return logger.Trace() }
 
+func NoColor() bool { return noColor }
+
 var _ goacmeLog.StdLogger = (*loggerWrapper)(nil)
 
 type loggerWrapper struct {
