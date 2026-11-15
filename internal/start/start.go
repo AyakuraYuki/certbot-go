@@ -8,10 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-acme/lego/v4/challenge"
+
 	"github.com/AyakuraYuki/certbot-go/internal/acme"
 	"github.com/AyakuraYuki/certbot-go/internal/config"
 	"github.com/AyakuraYuki/certbot-go/internal/log"
 	"github.com/AyakuraYuki/certbot-go/internal/providers/alidns"
+	"github.com/AyakuraYuki/certbot-go/internal/providers/dnspod"
 )
 
 func Start(configFile string, once bool) error {
@@ -21,7 +24,7 @@ func Start(configFile string, once bool) error {
 		return err
 	}
 
-	log.Info().Msgf("Config loaded, ACME directory: %s", conf.ACMEDirectory)
+	log.Info().Msgf("Config loaded, ACME directory: %s, DNS provider: %s", conf.ACMEDirectory, conf.DNSProvider)
 	for _, cert := range conf.Certificates {
 		mode := "direct mode"
 		if cert.ChallengeDelegate != "" {
@@ -53,7 +56,11 @@ func Start(configFile string, once bool) error {
 	}
 
 	// Create DNS provider
-	provider := alidns.NewProvider(conf, delegations)
+	provider, err := newDNSProvider(conf, delegations)
+	if err != nil {
+		log.Error().Err(err).Str("dns_provider", conf.DNSProvider).Msg("Failed to initialize DNS provider")
+		return err
+	}
 
 	// Create ACME manager
 	manager, err := acme.NewManager(conf, provider)
@@ -100,4 +107,15 @@ func Start(configFile string, once bool) error {
 	log.Info().Msgf("Received signal %v, shutting down...", sig)
 
 	return nil
+}
+
+func newDNSProvider(conf *config.Config, delegations map[string]string) (challenge.Provider, error) {
+	switch conf.DNSProvider {
+	case config.DNSProviderAliDNS:
+		return alidns.NewProvider(conf, delegations)
+	case config.DNSProviderDNSPod:
+		return dnspod.NewProvider(conf, delegations)
+	default:
+		return nil, fmt.Errorf("unsupported dns_provider %q", conf.DNSProvider)
+	}
 }

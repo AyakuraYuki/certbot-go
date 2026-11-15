@@ -11,6 +11,8 @@ require (
 	github.com/rs/zerolog v1.35.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/cobra v1.10.2
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.212
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/dnspod v1.3.131
 	golang.org/x/term v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
 )

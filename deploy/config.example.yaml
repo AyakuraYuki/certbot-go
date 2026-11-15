@@ -25,7 +25,14 @@ check_interval: 12h
 # How far in advance to begin renewing a certificate before it expires
 renew_before: 720h  # 30 days
 
-# Alibaba Cloud DNS API credentials
+# DNS provider used to create/delete ACME challenge TXT records
+# Available values:
+#   alidns - Alibaba Cloud DNS (default)
+#   dnspod - Tencent Cloud DNSPod
+# Only the credentials of the selected provider are required
+dns_provider: alidns
+
+# Alibaba Cloud DNS API credentials (used when dns_provider: alidns)
 # Used to automatically create/delete ACME challenge TXT records via Alibaba Cloud DNS
 # It is recommended to use a RAM subaccount with minimal permissions: AliyunDNSFullAccess
 # Environment variable references are supported: $ALICLOUD_ACCESS_KEY, $ALICLOUD_SECRET_KEY
@@ -34,18 +41,28 @@ alidns:
   access_key_secret: "$ALICLOUD_SECRET_KEY"
   # region_id: cn-hangzhou  # The AliDNS API is region-agnostic; this field is reserved for future use
 
+# Tencent Cloud DNSPod API credentials (used when dns_provider: dnspod)
+# Used to automatically create/delete ACME challenge TXT records via Tencent Cloud DNSPod
+# It is recommended to use a CAM sub-user with minimal permissions: QcloudDNSPodFullAccess
+# Environment variable references are supported: $TENCENTCLOUD_SECRET_ID, $TENCENTCLOUD_SECRET_KEY
+dnspod:
+  secret_id: "$TENCENTCLOUD_SECRET_ID"
+  secret_key: "$TENCENTCLOUD_SECRET_KEY"
+  # region: ""  # The DNSPod API is region-agnostic; this field is optional
+
 # Certificate list
 # ==========
 #
 # Two modes are supported:
 #
 # Mode 1 — CNAME delegation (for DNS providers without API support, e.g. China Telecom Cloud):
-#   Set challenge_delegate; the program will manage TXT records on the delegated domain via Alibaba Cloud DNS.
+#   Set challenge_delegate; the program will manage TXT records on the delegated domain via the selected DNS provider.
+#   The delegated domain must be hosted on the selected DNS provider.
 #   A one-time manual CNAME entry is required in your primary DNS provider:
 #     _acme-challenge.example.com CNAME _acme-challenge.example.proxy-acme.com
 #
 # Mode 2 — Direct mode (for domains already hosted on Alibaba Cloud DNS):
-#   Omit challenge_delegate; the program will directly manage _acme-challenge TXT records via Alibaba Cloud DNS.
+#   Omit challenge_delegate; the program will directly manage _acme-challenge TXT records via the selected DNS provider.
 #
 certificates:
   # Example 1: CNAME delegation mode — wildcard certificate + apex domain
@@ -57,7 +74,7 @@ certificates:
       - "*.example.com"
     challenge_delegate: "example.proxy-acme.com"
 
-  # Example 2: Direct mode — domain is hosted on Alibaba Cloud DNS, no delegation needed
+  # Example 2: Direct mode — domain is hosted on the selected DNS provider (e.g. Alibaba Cloud DNS), no delegation needed
   # No manual setup required; the program calls the API directly to complete validation
   # - name: ali-hosted.com
   #   domains:
@@ -71,7 +88,13 @@ certificates:
   #     - "api.ali-hosted.com"
   #     - "admin.ali-hosted.com"
 
-  # Example 4: CNAME delegation mode — another apex domain
+  # Example 4: Direct mode — domain is hosted on Tencent Cloud DNSPod (requires dns_provider: dnspod)
+  # - name: dnspod-hosted.com
+  #   domains:
+  #     - "dnspod-hosted.com"
+  #     - "*.dnspod-hosted.com"
+
+  # Example 5: CNAME delegation mode — another apex domain
   # Manually add the following record in your primary DNS provider:
   #   _acme-challenge.another-domain.com  CNAME  _acme-challenge.another-domain.proxy-acme.com
   # - name: another-domain.com

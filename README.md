@@ -5,7 +5,9 @@
 ## 使用方式
 
 1. 前往 [Release](https://github.com/AyakuraYuki/certbot-go/releases) 下载最新版本的可执行文件
-2. 准备好阿里云 Access Key，至少需要分配 `AliyunDNSFullAccess` 权限
+2. 准备好 DNS 服务商的 API 凭证，目前支持：
+    - 阿里云云解析（`alidns`）：Access Key，至少需要分配 `AliyunDNSFullAccess` 权限
+    - 腾讯云 DNSPod（`dnspod`）：SecretId / SecretKey，至少需要分配 `QcloudDNSPodFullAccess` 权限
 3. 准备好下面的配置文件，修改成你的真实配置
 
     ```yaml
@@ -35,7 +37,14 @@
     # 在证书到期前多久开始续签
     renew_before: 720h  # 30 天
     
-    # 阿里云 DNS API 凭证
+    # DNS 服务商，用于创建/删除 ACME challenge TXT 记录
+    # 可选值:
+    #   alidns - 阿里云云解析（默认）
+    #   dnspod - 腾讯云 DNSPod
+    # 只需要填写所选服务商的凭证
+    dns_provider: alidns
+    
+    # 阿里云 DNS API 凭证（dns_provider: alidns 时使用）
     # 用于在阿里云云解析上自动创建/删除 ACME challenge TXT 记录
     # 建议使用 RAM 子账号，最小权限: AliyunDNSFullAccess
     # 支持环境变量引用: $ALICLOUD_ACCESS_KEY, $ALICLOUD_SECRET_KEY
@@ -44,18 +53,27 @@
       access_key_secret: "$ALICLOUD_SECRET_KEY"
       # region_id: cn-hangzhou  # 目前 alidns API 不区分 region，保留字段
     
+    # 腾讯云 DNSPod API 凭证（dns_provider: dnspod 时使用）
+    # 用于在腾讯云 DNSPod 上自动创建/删除 ACME challenge TXT 记录
+    # 建议使用 CAM 子用户，最小权限: QcloudDNSPodFullAccess
+    # 支持环境变量引用: $TENCENTCLOUD_SECRET_ID, $TENCENTCLOUD_SECRET_KEY
+    dnspod:
+      secret_id: "$TENCENTCLOUD_SECRET_ID"
+      secret_key: "$TENCENTCLOUD_SECRET_KEY"
+      # region: ""  # 目前 DNSPod API 不区分 region，可不填
+    
     # 证书列表
     # ==========
     #
     # 支持两种模式:
     #
     # 模式 1 - CNAME 委托 (天翼云等不支持 API 的 DNS 服务商):
-    #   设置 challenge_delegate，程序通过阿里云 API 操作委托域名上的 TXT 记录
+    #   设置 challenge_delegate，程序通过所选 DNS 服务商的 API 操作委托域名上的 TXT 记录（委托域名需托管在所选服务商）
     #   天翼云 DNS 需要一次性手动添加 CNAME:
     #     _acme-challenge.example.com CNAME _acme-challenge.example.proxy-acme.com
     #
-    # 模式 2 - 直接模式 (域名本身就在阿里云 DNS 解析):
-    #   不设置 challenge_delegate，程序直接在阿里云 DNS 上操作 _acme-challenge TXT 记录
+    # 模式 2 - 直接模式 (域名本身就在所选 DNS 服务商解析):
+    #   不设置 challenge_delegate，程序直接在所选 DNS 服务商上操作 _acme-challenge TXT 记录
     #
     certificates:
       # 示例 1: CNAME 委托模式 — 通配符证书 + 裸域名
@@ -81,7 +99,13 @@
       #     - "api.ali-hosted.com"
       #     - "admin.ali-hosted.com"
     
-      # 示例 4: CNAME 委托 — 另一个一级域名
+      # 示例 4: 直接模式 — 域名在腾讯云 DNSPod 上（需设置 dns_provider: dnspod）
+      # - name: dnspod-hosted.com
+      #   domains:
+      #     - "dnspod-hosted.com"
+      #     - "*.dnspod-hosted.com"
+    
+      # 示例 5: CNAME 委托 — 另一个一级域名
       # 在主域名 DNS 手动添加:
       #   _acme-challenge.another-domain.com  CNAME  _acme-challenge.another-domain.proxy-acme.com
       # - name: another-domain.com
@@ -96,7 +120,7 @@
 
    如需配置系统服务，可以选择 `systemd` 或者 `supervisor`
 
-    1. `systemd` 需准备如下的配置，注册到 systemd；注意，你可能需要修改部分路径信息，如果在 `config.yaml` 没有配置阿里云 Access Key 的，还需要在这里增加环境变量配置。
+    1. `systemd` 需准备如下的配置，注册到 systemd；注意，你可能需要修改部分路径信息，如果在 `config.yaml` 没有直接配置 DNS 服务商凭证的，还需要在这里增加环境变量配置。
        ```unit file (systemd)
        [Unit]
        Description=certbot-go ACME certificate manager
@@ -115,10 +139,12 @@
        ProtectSystem=strict
        ReadWritePaths=/etc/letsencrypt
        
-       # Environment variables for Alibaba Cloud credentials
+       # Environment variables for DNS provider credentials
        # Option 1: inline (not recommended for production)
        # Environment=ALICLOUD_ACCESS_KEY=your-ak
        # Environment=ALICLOUD_SECRET_KEY=your-sk
+       # Environment=TENCENTCLOUD_SECRET_ID=your-secret-id
+       # Environment=TENCENTCLOUD_SECRET_KEY=your-secret-key
        
        # Option 2: environment file (recommended)
        # EnvironmentFile=-/etc/certbot-go/.env
@@ -127,7 +153,7 @@
        WantedBy=multi-user.target
        ```
 
-    2. `supervisor` 需准备如下的配置，存放在 supervisor 服务配置目录；同样的，你可能需要修改部分路径信息，如果在 `config.yaml` 没有配置阿里云 Access Key 的，还需要在这里增加环境变量配置。
+    2. `supervisor` 需准备如下的配置，存放在 supervisor 服务配置目录；同样的，你可能需要修改部分路径信息，如果在 `config.yaml` 没有直接配置 DNS 服务商凭证的，还需要在这里增加环境变量配置。
        ```text
        # supervisor service config
        [program:certbot-go]

@@ -15,10 +15,12 @@ PrivateTmp=yes
 ProtectSystem=strict
 ReadWritePaths=/etc/letsencrypt
 
-# Environment variables for Alibaba Cloud credentials
+# Environment variables for DNS provider credentials
 # Option 1: inline (not recommended for production)
 # Environment=ALICLOUD_ACCESS_KEY=your-ak
 # Environment=ALICLOUD_SECRET_KEY=your-sk
+# Environment=TENCENTCLOUD_SECRET_ID=your-secret-id
+# Environment=TENCENTCLOUD_SECRET_KEY=your-secret-key
 
 # Option 2: environment file (recommended)
 EnvironmentFile=-/etc/certbot-go/.env

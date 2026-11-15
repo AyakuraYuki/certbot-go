@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-acme/lego/v4/lego"
@@ -16,14 +17,28 @@ type Config struct {
 	AccountDir    string       `yaml:"account_dir"`
 	CheckInterval string       `yaml:"check_interval"`
 	RenewBefore   string       `yaml:"renew_before"`
+	DNSProvider   string       `yaml:"dns_provider"`
 	AliDNS        AliDNSConfig `yaml:"alidns"`
+	DNSPod        DNSPodConfig `yaml:"dnspod"`
 	Certificates  []CertConfig `yaml:"certificates"`
 }
+
+// Supported DNS providers.
+const (
+	DNSProviderAliDNS = "alidns"
+	DNSProviderDNSPod = "dnspod"
+)
 
 type AliDNSConfig struct {
 	AccessKeyID     string `yaml:"access_key_id"`
 	AccessKeySecret string `yaml:"access_key_secret"`
 	RegionID        string `yaml:"region_id"`
+}
+
+type DNSPodConfig struct {
+	SecretID  string `yaml:"secret_id"`
+	SecretKey string `yaml:"secret_key"`
+	Region    string `yaml:"region"`
 }
 
 type CertConfig struct {
@@ -59,8 +74,17 @@ func (c *Config) Validate() error {
 	if c.Email == "" {
 		return fmt.Errorf("email is required")
 	}
-	if c.AliDNS.AccessKeyID == "" || c.AliDNS.AccessKeySecret == "" {
-		return fmt.Errorf("alidns access_key_id and access_key_secret are required")
+	switch c.DNSProvider {
+	case DNSProviderAliDNS:
+		if c.AliDNS.AccessKeyID == "" || c.AliDNS.AccessKeySecret == "" {
+			return fmt.Errorf("alidns access_key_id and access_key_secret are required")
+		}
+	case DNSProviderDNSPod:
+		if c.DNSPod.SecretID == "" || c.DNSPod.SecretKey == "" {
+			return fmt.Errorf("dnspod secret_id and secret_key are required")
+		}
+	default:
+		return fmt.Errorf("unsupported dns_provider %q, available: %s, %s", c.DNSProvider, DNSProviderAliDNS, DNSProviderDNSPod)
 	}
 	if len(c.Certificates) == 0 {
 		return fmt.Errorf("at least one certificate entry is required")
@@ -89,6 +113,7 @@ func LoadConfig(path string) (*Config, error) {
 		AccountDir:    "/etc/letsencrypt/accounts",
 		CheckInterval: "12h",
 		RenewBefore:   "720h",
+		DNSProvider:   DNSProviderAliDNS,
 	}
 
 	if err = yaml.Unmarshal(data, cfg); err != nil {
@@ -98,6 +123,13 @@ func LoadConfig(path string) (*Config, error) {
 	// expand env vars in sensitive fields
 	cfg.AliDNS.AccessKeyID = os.ExpandEnv(cfg.AliDNS.AccessKeyID)
 	cfg.AliDNS.AccessKeySecret = os.ExpandEnv(cfg.AliDNS.AccessKeySecret)
+	cfg.DNSPod.SecretID = os.ExpandEnv(cfg.DNSPod.SecretID)
+	cfg.DNSPod.SecretKey = os.ExpandEnv(cfg.DNSPod.SecretKey)
+
+	cfg.DNSProvider = strings.ToLower(strings.TrimSpace(cfg.DNSProvider))
+	if cfg.DNSProvider == "" {
+		cfg.DNSProvider = DNSProviderAliDNS
+	}
 
 	if err = cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("config validation: %w", err)
