@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>certbot-go — 多域名 SSL 证书自动申请与续期工具</title>
+  <meta name="description" content="certbot-go 是一个基于 lego 的 ACME 证书管理工具，支持多域名、通配符证书，支持阿里云云解析与腾讯云 DNSPod，提供直接验证与 CNAME 委托验证两种模式。">
+  <meta property="og:title" content="certbot-go">
+  <meta property="og:description" content="多域名 SSL 证书自动申请与续期工具，支持阿里云云解析与腾讯云 DNSPod。">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230f766e'/%3E%3Cpath d='M30 52l14 14 26-30' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-soft: #f6f8fa;
+      --fg: #1f2328;
+      --fg-muted: #59636e;
+      --border: #d1d9e0;
+      --accent: #0f766e;
+      --accent-fg: #ffffff;
+      --accent-soft: #e6f4f1;
+      --code-bg: #f6f8fa;
+      --warn-bg: #fff8e5;
+      --warn-border: #e8c26a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0d1117;
+        --bg-soft: #161b22;
+        --fg: #e6edf3;
+        --fg-muted: #9198a1;
+        --border: #30363d;
+        --accent: #2dd4bf;
+        --accent-fg: #06201d;
+        --accent-soft: #10302c;
+        --code-bg: #161b22;
+        --warn-bg: #2a2410;
+        --warn-border: #8a6d1f;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--fg);
+      background: var(--bg);
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 0.9em;
+    }
+    code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 4px; border: 1px solid var(--border); }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      line-height: 1.5;
+      margin: 0;
+    }
+    pre code { background: none; border: none; padding: 0; font-size: 0.875rem; }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.25rem; }
+
+    header.nav {
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 10;
+      background: color-mix(in srgb, var(--bg) 85%, transparent);
+      backdrop-filter: blur(8px);
+    }
+    header.nav .container { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    .brand { font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--fg); }
+    .brand svg { width: 24px; height: 24px; }
+    nav ul { list-style: none; display: flex; gap: 1.25rem; margin: 0; padding: 0; }
+    nav a { color: var(--fg-muted); font-size: 0.95rem; }
+    nav a:hover { color: var(--fg); text-decoration: none; }
+    @media (max-width: 640px) { nav ul li.hide-sm { display: none; } }
+
+    .hero { padding: 4.5rem 0 3.5rem; text-align: center; }
+    .hero h1 { font-size: 2.75rem; margin: 0 0 0.75rem; letter-spacing: -0.02em; }
+    .hero p.lead { font-size: 1.25rem; color: var(--fg-muted); max-width: 640px; margin: 0 auto 2rem; }
+    .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem; }
+    .badge {
+      font-size: 0.8rem; padding: 0.2em 0.7em; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent); border: 1px solid transparent;
+    }
+    .actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.65rem 1.25rem; border-radius: 8px; font-weight: 600;
+      border: 1px solid var(--border); color: var(--fg); background: var(--bg-soft);
+    }
+    .btn:hover { text-decoration: none; filter: brightness(0.97); }
+    .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .btn svg { width: 18px; height: 18px; fill: currentColor; }
+
+    section { padding: 3rem 0; border-top: 1px solid var(--border); }
+    section h2 { font-size: 1.75rem; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+    section > .container > p.sub { color: var(--fg-muted); margin: 0 0 2rem; }
+    h3 { font-size: 1.15rem; margin: 2rem 0 0.75rem; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+    .card {
+      border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem;
+      background: var(--bg-soft);
+    }
+    .card h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+    .card p { margin: 0; color: var(--fg-muted); font-size: 0.95rem; }
+    .card .icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+
+    .modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+    .mode { border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+    .mode h3 { margin-top: 0; }
+    .mode ol { padding-left: 1.25rem; margin: 0.75rem 0 0; color: var(--fg-muted); }
+    .mode li { margin-bottom: 0.4rem; }
+    .mode pre { margin-top: 0.75rem; }
+
+    .steps { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+    .steps > li { position: relative; padding-left: 3rem; margin-bottom: 2rem; }
+    .steps > li::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; left: 0; top: 0;
+      width: 2rem; height: 2rem; border-radius: 50%;
+      background: var(--accent); color: var(--accent-fg);
+      display: flex; align-items: center; justify-content: center; font-weight: 700;
+    }
+    .steps h3 { margin-top: 0.1rem; }
+    .steps ul { padding-left: 1.25rem; color: var(--fg-muted); }
+
+    .callout {
+      border-left: 4px solid var(--warn-border); background: var(--warn-bg);
+      padding: 0.75rem 1rem; border-radius: 6px; margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+
+    details { border: 1px solid var(--border); border-radius: 8px; margin-top: 0.75rem; }
+    details summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; }
+    details pre { border: none; border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--fg-muted); font-weight: 600; }
+
+    footer { border-top: 1px solid var(--border); padding: 2rem 0; color: var(--fg-muted); font-size: 0.9rem; text-align: center; }
+  </style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="container">
+    <a class="brand" href="#">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="20" fill="#0f766e"/><path d="M30 52l14 14 26-30" stroke="#fff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      certbot-go
+    </a>
+    <nav>
+      <ul>
+        <li><a href="#features">特性</a></li>
+        <li><a href="#modes">验证模式</a></li>
+        <li><a href="#quickstart">快速开始</a></li>
+        <li class="hide-sm"><a href="#deploy">部署</a></li>
+        <li><a href="https://github.com/AyakuraYuki/certbot-go">GitHub</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="container">
+      <div class="badges">
+        <span class="badge">Go</span>
+        <span class="badge">ACME / Let's Encrypt</span>
+        <span class="badge">阿里云云解析</span>
+        <span class="badge">腾讯云 DNSPod</span>
+        <span class="badge">MIT License</span>
+      </div>
+      <h1>certbot-go</h1>
+      <p class="lead">一个支持多域名自动申请、续期 SSL 证书的工具。基于 lego 实现 ACME DNS-01 验证，单个二进制文件，可作为守护进程长期运行。</p>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/AyakuraYuki/certbot-go/releases/latest">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"/><path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"/></svg>
+          下载最新版本
+        </a>
+        <a class="btn" href="https://github.com/AyakuraYuki/certbot-go">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+          查看源码
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="container">
+      <h2>特性</h2>
+      <p class="sub">面向需要同时维护多个域名证书的个人与小团队。</p>
+      <div class="grid">
+        <div class="card">
+          <div class="icon">📜</div>
+          <h3>多域名、通配符证书</h3>
+          <p>一份配置文件管理多张证书，每张证书可包含多个域名，支持 <code>*.example.com</code> 通配符。</p>
+        </div>
+        <div class="card">
+          <div class="icon">🔁</div>
+          <h3>自动续期</h3>
+          <p>守护进程按 <code>check_interval</code> 定期检查，在到期前 <code>renew_before</code> 时间内自动续签。</p>
+        </div>
+        <div class="card">
+          <div class="icon">☁️</div>
+          <h3>多 DNS 服务商</h3>
+          <p>通过 <code>dns_provider</code> 选择阿里云云解析（<code>alidns</code>）或腾讯云 DNSPod（<code>dnspod</code>），自动增删 ACME challenge TXT 记录。</p>
+        </div>
+        <div class="card">
+          <div class="icon">🔗</div>
+          <h3>CNAME 委托验证</h3>
+          <p>域名托管在不支持 API 的服务商（如天翼云）时，只需添加一条 CNAME，把验证委托给受支持的服务商。</p>
+        </div>
+        <div class="card">
+          <div class="icon">⚙️</div>
+          <h3>单次或守护进程</h3>
+          <p><code>--once</code> 单次执行即退出，适合 cron；默认模式常驻运行，可配合 systemd / supervisor。</p>
+        </div>
+        <div class="card">
+          <div class="icon">🔐</div>
+          <h3>凭证来自环境变量</h3>
+          <p>配置文件支持 <code>$ENV_VAR</code> 引用，密钥可以放在 <code>.env</code> 或服务环境变量中，不落入配置文件。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modes">
+    <div class="container">
+      <h2>两种验证模式</h2>
+      <p class="sub">certbot-go 使用 DNS-01 验证，根据域名是否托管在所选 DNS 服务商上，选择直接模式或 CNAME 委托模式。</p>
+      <div class="modes">
+        <div class="mode">
+          <h3>直接模式</h3>
+          <p>域名本身就在阿里云云解析或腾讯云 DNSPod 上解析。不设置 <code>challenge_delegate</code>，程序直接通过 API 在域名下操作 <code>_acme-challenge</code> TXT 记录，无需任何手动步骤。</p>
+<pre><code>certificates:
+  - name: example.com
+    domains:
+      - "example.com"
+      - "*.example.com"
+    # 不写 challenge_delegate 即为直接模式</code></pre>
+        </div>
+        <div class="mode">
+          <h3>CNAME 委托模式</h3>
+          <p>域名托管在不支持 API 的服务商。在原 DNS 上一次性添加 CNAME，把 <code>_acme-challenge</code> 指向一个托管在所选服务商上的委托域名，程序随后只操作委托域名上的 TXT 记录。</p>
+          <ol>
+            <li>在原 DNS 添加：<br><code>_acme-challenge.example.com CNAME _acme-challenge.example.proxy-acme.com</code></li>
+            <li>配置中填写 <code>challenge_delegate</code></li>
+          </ol>
+<pre><code>certificates:
+  - name: example.com
+    domains:
+      - "example.com"
+      - "*.example.com"
+    challenge_delegate: "example.proxy-acme.com"</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="quickstart">
+    <div class="container">
+      <h2>快速开始</h2>
+      <p class="sub">从下载到拿到第一张证书只需四步。</p>
+      <ol class="steps">
+        <li>
+          <h3>下载可执行文件</h3>
+          <p>前往 <a href="https://github.com/AyakuraYuki/certbot-go/releases">Release 页面</a> 下载对应平台的版本，支持 Linux、macOS、Windows 的 amd64 与 arm64。</p>
+          <pre><code># 以 Linux amd64 为例
+chmod +x certbot-go-linux_amd64
+sudo mv certbot-go-linux_amd64 /usr/local/bin/certbot-go
+certbot-go --version</code></pre>
+          <div class="callout">
+            <strong>macOS 用户注意：</strong>从浏览器下载的二进制文件会被 Gatekeeper 标记为隔离，首次运行时可能提示“无法打开，因为 Apple 无法检查其是否包含恶意软件”或“无法验证开发者”。任选一种方式解决：
+            <ul style="margin:0.5rem 0 0; padding-left:1.25rem;">
+              <li>打开 <strong>系统设置 → 隐私与安全性</strong>，在“安全性”区域找到被阻止的 certbot-go，点击 <strong>仍要打开</strong>，然后再次运行。</li>
+              <li>或者直接在终端移除隔离属性：</li>
+            </ul>
+<pre style="margin-top:0.5rem"><code>xattr -d com.apple.quarantine /path/to/certbot-go</code></pre>
+          </div>
+        </li>
+        <li>
+          <h3>准备 DNS 服务商 API 凭证</h3>
+          <table>
+            <thead><tr><th>服务商</th><th><code>dns_provider</code></th><th>凭证</th><th>最小权限</th></tr></thead>
+            <tbody>
+              <tr><td>阿里云云解析</td><td><code>alidns</code></td><td>AccessKey ID / Secret（建议 RAM 子账号）</td><td><code>AliyunDNSFullAccess</code></td></tr>
+              <tr><td>腾讯云 DNSPod</td><td><code>dnspod</code></td><td>SecretId / SecretKey（建议 CAM 子用户）</td><td><code>QcloudDNSPodFullAccess</code></td></tr>
+            </tbody>
+          </table>
+        </li>
+        <li>
+          <h3>编写配置文件</h3>
+          <p>按下面的示例修改成你的真实配置。完整示例见仓库中的 <a href="https://github.com/AyakuraYuki/certbot-go/blob/main/deploy/config.example.yaml"><code>deploy/config.example.yaml</code></a>。</p>
+          <div class="callout">⚠️ 首次调试建议使用 staging 目录 <code>https://acme-staging-v02.api.letsencrypt.org/directory</code>，避免触发 Let's Encrypt 的速率限制。验证通过后再切换到生产目录。</div>
+<pre><code># Let's Encrypt 账号邮箱，用于证书到期提醒
+email: you@example.com
+
+# ACME 目录地址
+# 生产环境: https://acme-v02.api.letsencrypt.org/directory
+# 测试环境: https://acme-staging-v02.api.letsencrypt.org/directory
+acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
+
+# 证书存储目录，每个证书一个子目录
+# 子目录内包含: fullchain.pem, privkey.pem, chain.pem, metadata.json
+cert_dir: /etc/letsencrypt/live
+
+# ACME 账号信息存储目录
+account_dir: /etc/letsencrypt/accounts
+
+# 续签检查间隔（daemon 模式下有效）
+check_interval: 12h
+
+# 在证书到期前多久开始续签
+renew_before: 720h  # 30 天
+
+# DNS 服务商: alidns（默认）或 dnspod，只需填写所选服务商的凭证
+dns_provider: alidns
+
+alidns:
+  access_key_id: "$ALICLOUD_ACCESS_KEY"
+  access_key_secret: "$ALICLOUD_SECRET_KEY"
+
+dnspod:
+  secret_id: "$TENCENTCLOUD_SECRET_ID"
+  secret_key: "$TENCENTCLOUD_SECRET_KEY"
+
+certificates:
+  # 直接模式：域名托管在所选 DNS 服务商上
+  - name: example.com
+    domains:
+      - "example.com"
+      - "*.example.com"
+
+  # CNAME 委托模式：需先在原 DNS 添加
+  #   _acme-challenge.example.org  CNAME  _acme-challenge.example-org.proxy-acme.com
+  - name: example.org
+    domains:
+      - "example.org"
+      - "*.example.org"
+    challenge_delegate: "example-org.proxy-acme.com"</code></pre>
+        </li>
+        <li>
+          <h3>运行</h3>
+          <p>单次运行，申请或续期后立即退出：</p>
+          <pre><code>certbot-go --config config.yaml --once</code></pre>
+          <p>守护进程模式，常驻并定期检查续期：</p>
+          <pre><code>certbot-go --config config.yaml</code></pre>
+          <p>证书输出在 <code>cert_dir/&lt;name&gt;/</code> 下，包含 <code>fullchain.pem</code>、<code>privkey.pem</code>、<code>chain.pem</code> 与 <code>metadata.json</code>，可直接给 Nginx、Caddy 等服务使用。</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="deploy">
+    <div class="container">
+      <h2>作为系统服务部署</h2>
+      <p class="sub">守护进程模式推荐通过 systemd 或 supervisor 托管。两份模板都在仓库的 <a href="https://github.com/AyakuraYuki/certbot-go/tree/main/deploy"><code>deploy/</code></a> 目录中，使用前请按实际路径修改；若凭证通过环境变量引用，还需在服务配置中注入这些变量。</p>
+
+      <details open>
+        <summary>systemd：/etc/systemd/system/certbot-go.service</summary>
+<pre><code>[Unit]
+Description=certbot-go ACME certificate manager
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/certbot-go --config /etc/certbot-go/config.yaml
+Restart=on-failure
+RestartSec=10
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/etc/letsencrypt
+
+# DNS provider credentials (recommended: environment file)
+EnvironmentFile=-/etc/certbot-go/.env
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+<pre><code># 注册并启动服务
+sudo systemctl daemon-reload
+sudo systemctl enable --now certbot-go
+sudo journalctl -u certbot-go -f</code></pre>
+      </details>
+
+      <details>
+        <summary>supervisor：/etc/supervisor/conf.d/certbot-go.conf</summary>
+<pre><code>[program:certbot-go]
+directory = /etc/certbot-go
+command = /usr/local/bin/certbot-go --config /etc/certbot-go/config.yaml
+stopasgroup = true
+killasgroup = true
+autostart = true
+startsecs = 5
+autorestart = true
+startretries = 10
+user = root
+redirect_stderr = false
+
+stdout_logfile = /var/log/certbot-go.log
+stdout_logfile_maxbytes = 32MB
+stdout_logfile_backups = 2
+
+stderr_logfile = /var/log/certbot-go.err.log
+stderr_logfile_maxbytes = 32MB
+stderr_logfile_backups = 2
+
+environment = ALICLOUD_ACCESS_KEY="",ALICLOUD_SECRET_KEY=""</code></pre>
+      </details>
+    </div>
+  </section>
+
+  <section id="build">
+    <div class="container">
+      <h2>从源码构建</h2>
+      <p class="sub">需要 Go 1.27 或更高版本。</p>
+<pre><code>git clone https://github.com/AyakuraYuki/certbot-go.git
+cd certbot-go
+make init     # 从 deploy/ 复制 config.yaml 与 .env 模板
+make build    # 产物位于 build/certbot-go
+make run      # 等价于 --once 单次运行
+make test</code></pre>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <p>
+      <a href="https://github.com/AyakuraYuki/certbot-go">GitHub</a> ·
+      <a href="https://github.com/AyakuraYuki/certbot-go/releases">Releases</a> ·
+      <a href="https://github.com/AyakuraYuki/certbot-go/blob/main/Changelogs.md">更新日志</a> ·
+      <a href="https://github.com/AyakuraYuki/certbot-go/issues">Issues</a>
+    </p>
+    <p>certbot-go 基于 <a href="https://github.com/go-acme/lego">lego</a> 构建 · MIT License · © 2026 Ayakura Yuki</p>
+  </div>
+</footer>
+
+</body>
+</html>
